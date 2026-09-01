@@ -1,6 +1,6 @@
 export type ComponentType = "ground" | "resistor" | "capacitor" | "inductor" | "voltage_source" | "diode" | "ideal_opamp";
 export type ParameterValue = number | string | boolean;
-export type CircuitComponent = { id: string; type: ComponentType; params: Record<string, ParameterValue>; pins: Record<string, string | null>; position?: { x: number; y: number } | null; rotation?: 0 | 90 | 180 | 270 };
+export type CircuitComponent = { id: string; type: ComponentType; params: Record<string, ParameterValue>; pins: Record<string, string | null>; position?: { x: number; y: number } | null; rotation?: 0 | 90 | 180 | 270; layout_locked?: boolean };
 export type CircuitNode = { id: string; label: string };
 export type Circuit = { id: string; revision: number; name: string; components: CircuitComponent[]; nodes: CircuitNode[]; metadata: Record<string, string> };
 export type Constraint = { id: string; metric: string; operator: "<" | "<=" | ">" | ">=" | "between" | "approximately"; target: number | [number, number]; tolerance?: number | null };

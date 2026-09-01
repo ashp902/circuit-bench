@@ -62,6 +62,8 @@ export function LabWorkbench() {
     setReportExperiment((current) => current ? nextExperiments.find((item) => item.id === current.id) ?? null : null);
   }, []);
   useEffect(() => { void Promise.all([refresh(), api.getChallenges().then(setChallenges)]).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to load the lab.")); }, [refresh]);
+  useEffect(() => { const handleLayout = (event: Event) => { const detail = (event as CustomEvent<{ before: Circuit; after: Circuit }>).detail; if (!detail) return; undoHistory.current = [...undoHistory.current.slice(-49), detail.before]; redoHistory.current = []; setLab((current) => current ? { ...current, circuit: detail.after } : current); setSimulation(null); setEvaluation(null); setSelectedId(null); setSelectedNodeId(null); }; window.addEventListener("circuit-layout-changed", handleLayout); return () => window.removeEventListener("circuit-layout-changed", handleLayout); }, []);
+  useEffect(() => { const handleLayoutError = (event: Event) => setError((event as CustomEvent<string>).detail || "Could not arrange the circuit."); window.addEventListener("circuit-layout-error", handleLayoutError); return () => window.removeEventListener("circuit-layout-error", handleLayoutError); }, []);
   const activeExecution = experiments.some((experiment) => experiment.execution_status === "running" || experiment.execution_status === "paused");
   useEffect(() => {
     const sync = () => { if (!document.hidden) void refresh().catch(() => undefined); };

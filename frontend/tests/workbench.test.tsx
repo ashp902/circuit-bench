@@ -1,15 +1,16 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ComponentTray } from "@/components/ComponentTray";
-import { componentPins, pathFromPointsWithBridges } from "@/components/CircuitCanvas";
+import { CircuitCanvas, componentPins, pathFromPointsWithBridges } from "@/components/CircuitCanvas";
 import { ExperimentTimeline } from "@/components/ExperimentTimeline";
 import { ExperimentAnalysis } from "@/components/ExperimentAnalysis";
 import { GoalPanel } from "@/components/GoalPanel";
 import { PropertyInspector } from "@/components/PropertyInspector";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import type { Challenge, Circuit, Experiment, SimulationResult } from "@/lib/types";
+import { api } from "@/lib/api";
 
 const challenge: Challenge = {
   id: "filter", title: "Filter Design", description: "Keep useful frequencies.", component_limit: 6,
@@ -52,6 +53,21 @@ describe("shared workbench panels", () => {
         expect(rotated[index].direction).not.toBe(pin.direction);
       });
     });
+  });
+
+  it("offers explicit topology-aware arrangement from the canvas", async () => {
+    const arrangeable = { ...circuit, components: [...circuit.components, { id: "C1", type: "capacitor" as const, params: { capacitance_f: 100e-9 }, pins: { a: "out", b: "gnd" } }] };
+    const arranged = { ...arrangeable, revision: 4, components: arrangeable.components.map((item, index) => ({ ...item, position: { x: 200 + index * 180, y: 240 } })) };
+    const autoLayout = vi.spyOn(api, "autoLayoutCircuit").mockResolvedValue(arranged);
+    const changed = vi.fn();
+    window.addEventListener("circuit-layout-changed", changed, { once: true });
+
+    render(<CircuitCanvas circuit={arrangeable} invalidPins={[]} onAddComponent={vi.fn()} onClearSelection={vi.fn()} onConnectPins={vi.fn()} onConnectToNode={vi.fn()} onSetLayout={vi.fn()} onSelectComponent={vi.fn()} onSelectNode={vi.fn()} selectedComponentId={null} selectedNodeId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Auto arrange" }));
+
+    await waitFor(() => expect(autoLayout).toHaveBeenCalledWith(3, false));
+    await waitFor(() => expect(changed).toHaveBeenCalled());
+    autoLayout.mockRestore();
   });
 
   it("renders constraints and the available component tray", () => {

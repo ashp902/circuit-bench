@@ -95,7 +95,9 @@ The Workbench is the primary circuit editor. It currently provides:
 - A component library filtered by the active challenge.
 - A pan-able, zoomable schematic canvas with fit-to-circuit control.
 - Add, select, move, rotate, duplicate, and delete component interactions.
+- Topology-aware automatic arrangement: signal flow is placed left-to-right, shunt parts below their net, feedback paths above the signal path, and disconnected parts in a separate staging area. The explicit Auto arrange action recomputes the whole schematic.
 - Canonical component position and rotation persisted with the circuit and experiment snapshot; reopening or restoring preserves the recorded schematic layout.
+- Manually moved or rotated parts are marked as placement-locked. Agent wiring automatically arranges unlocked parts around those locks instead of overriding a human layout.
 - Schematic routing that follows terminal geometry, avoids component bodies where possible, and displays non-junction wire crossings as bridge bumps.
 - Selectable, renameable electrical nets and component terminals; drag terminals to wire another terminal directly or attach to an existing named net.
 - Visible terminal hit targets of at least 18×18 px, full component-body selection, inspector disconnect controls, junction dots, crossing bridge bumps, and floating-pin validation.
@@ -215,6 +217,7 @@ WebMCP availability depends on the host browser’s experimental model-context i
 | `delete_saved_circuit` | Write | Delete a saved circuit; deleting the active one returns that session's workbench to the blank landing state. |
 | `reset_lab` | Write | Replace the active challenge and circuit using the same reset service as the human UI. |
 | `get_circuit` | Read | Get components, named nodes, pin connections, values, and current revision. |
+| `auto_layout_circuit` | Write | Arrange the schematic from electrical topology; manual placements are preserved by default. |
 | `get_constraints` | Read | Get machine-evaluated requirements for the active challenge. |
 | `add_component` | Write | Add one allowed component with deterministic automatic placement; callers may optionally supply a position. |
 | `create_node` | Write | Optionally create a named electrical net with `expected_revision`. |
@@ -288,6 +291,7 @@ Presentation-only actions—panning/zooming the canvas, opening a tab, resizing 
 | Rename/list/open/delete named circuits | `POST /circuits`, `GET /circuits`, `POST /circuits/{id}/open`, `DELETE /circuits/{id}` | `rename_circuit`, `list_saved_circuits`, `open_saved_circuit`, `delete_saved_circuit` |
 | Inspect the lab/circuit/criteria | `GET /lab`, `GET /circuit`, `POST /validate` | `get_lab_state`, `get_circuit`, `get_constraints`, `validate_circuit` |
 | Add/edit/remove and wire components | component/node/connection endpoints | `add_component`, `create_node`, `rename_net`, `connect`, `connect_pins`, `disconnect`, `set_component_value`, `remove_component` |
+| Arrange the schematic from topology | `POST /circuit/auto-layout` | `auto_layout_circuit` |
 | Restore a local circuit snapshot | `POST /circuit/restore` | `restore_circuit` |
 | Run and measure direct analyses | simulation and evaluation endpoints | `run_operating_point`, `run_ac_analysis`, `run_transient`, measurement tools, `evaluate_constraints` |
 | Create/configure/preview a sweep | experiment-definition create/update endpoints | `create_experiment`, `update_experiment`, `get_experiment_plan` |

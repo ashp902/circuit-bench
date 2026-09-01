@@ -31,6 +31,7 @@ export const api = {
   deleteSavedCircuit: (circuitId: string) => request<LabState>(`/api/circuits/${circuitId}`, { method: "DELETE" }),
   getCircuit: () => request<Circuit>("/api/circuit"),
   restoreCircuit: (circuit: Circuit, expectedRevision: number) => request<Circuit>("/api/circuit/restore", { method: "POST", ...json({ circuit, expected_revision: expectedRevision }) }),
+  autoLayoutCircuit: (expectedRevision: number, preserveManual = false) => request<Circuit>("/api/circuit/auto-layout", { method: "POST", ...json({ expected_revision: expectedRevision, preserve_manual: preserveManual }) }),
   getExperiments: () => request<Experiment[]>("/api/experiments"),
   saveExperimentDefinition: (definition: ExperimentDefinition) => request<Experiment>("/api/experiment-definitions", { method: "POST", ...json(definition) }),
   updateExperimentDefinition: (id: string, definition: ExperimentDefinition) => request<Experiment>(`/api/experiment-definitions/${id}`, { method: "PUT", ...json(definition) }),

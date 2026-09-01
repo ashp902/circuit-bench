@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowClockwiseIcon, CornersOutIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
 
 import { engineering } from "@/lib/format";
+import { api } from "@/lib/api";
 import { getComponentDisplayName, getParameterUnit } from "@/lib/presentation";
 import type { Circuit, CircuitComponent, ComponentType, ParameterValue } from "@/lib/types";
 
@@ -311,6 +312,7 @@ export function CircuitCanvas({ circuit, selectedComponentId, selectedNodeId, in
   const [nodePositions, setNodePositions] = useState<Record<string, Point>>({});
   const [rotations, setRotations] = useState<Record<string, Rotation>>(() => Object.fromEntries(circuit.components.map((component) => [component.id, component.rotation ?? 0])));
   const [layoutEpoch, setLayoutEpoch] = useState(0);
+  const [arranging, setArranging] = useState(false);
   const [dragging, setDragging] = useState<{ kind: "component" | "node"; id: string; offset: Point } | null>(null);
   const nodeDrag = useRef<{ id: string; offset: Point } | null>(null);
   const [panning, setPanning] = useState<{ pointer: Point; pan: Point } | null>(null);
@@ -493,9 +495,23 @@ export function CircuitCanvas({ circuit, selectedComponentId, selectedNodeId, in
     if (added) setPositions((current) => ({ ...current, [added.id]: added.position ?? { x: snap(point.x), y: snap(point.y) } }));
   };
   const previewStart = wiring ? pins.find((pin) => pinKey(pin) === pinKey(wiring.source)) : null;
+  const autoArrange = async () => {
+    setArranging(true);
+    try {
+      const updated = await api.autoLayoutCircuit(circuit.revision, false);
+      setPositions(canonicalPositions(updated));
+      setRotations(Object.fromEntries(updated.components.map((component) => [component.id, component.rotation ?? 0])));
+      setLayoutEpoch((value) => value + 1);
+      window.dispatchEvent(new CustomEvent("circuit-layout-changed", { detail: { before: circuit, after: updated } }));
+    } catch (reason) {
+      window.dispatchEvent(new CustomEvent("circuit-layout-error", { detail: reason instanceof Error ? reason.message : "Could not arrange the circuit." }));
+    } finally {
+      setArranging(false);
+    }
+  };
 
   return <section className="canvas-panel panel" aria-label="Circuit canvas">
-    <div className="canvas-heading"><div><p className="section-kicker">Circuit</p><span>{circuit.name}</span></div><span className="canvas-note">Drag empty space to pan. Drag parts or named nodes to move.</span></div>
+    <div className="canvas-heading"><div><p className="section-kicker">Circuit</p><span>{circuit.name}</span></div><div className="canvas-heading__actions"><span className="canvas-note">Drag empty space to pan. Drag parts or named nodes to move.</span><button disabled={arranging || circuit.components.length < 2} onClick={() => void autoArrange()} title="Arrange components from circuit connectivity" type="button">{arranging ? "Arranging…" : "Auto arrange"}</button></div></div>
     <div className="canvas" onDragOver={(event) => event.preventDefault()} onDrop={drop} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!target.closest("button, .schematic-component, .schematic-net, [data-pin-key]")) { onClearSelection(); event.currentTarget.setPointerCapture(event.pointerId); setPanning({ pointer: { x: event.clientX, y: event.clientY }, pan }); } }} ref={canvas} role="application" aria-label={`${circuit.name} schematic editor`}>
       <svg aria-hidden className="schematic-grid" viewBox={`0 0 ${WORLD.width} ${WORLD.height}`}><defs><pattern height={GRID} id="workbench-grid" patternUnits="userSpaceOnUse" width={GRID}><circle cx="1" cy="1" fill="currentColor" r="0.65" /></pattern></defs><rect fill="url(#workbench-grid)" height="100%" width="100%" /></svg>
       <div className="schematic-world" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
