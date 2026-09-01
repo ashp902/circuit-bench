@@ -114,5 +114,9 @@ describe("shared workbench panels", () => {
     expect(screen.getAllByText("Gain 600 Hz").length).toBeGreaterThan(0);
     expect(screen.getByText("900 Ω to 1.10 kΩ (3 values)")).toBeInTheDocument();
     expect(screen.getByText(/operating point \+ ac sweep/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Runs" }));
+    expect(screen.getByRole("columnheader", { name: "Run" })).toHaveClass("numeric-column");
+    expect(screen.getByRole("columnheader", { name: "R1 Resistance" })).toHaveClass("numeric-column");
+    expect(screen.getByRole("columnheader", { name: "Gain 600 Hz" })).toHaveClass("numeric-column");
   });
 });
