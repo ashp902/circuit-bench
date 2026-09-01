@@ -207,6 +207,29 @@ def test_component_layout_survives_save_and_reopen(tmp_path) -> None:
     assert resistor["rotation"] == 90
 
 
+def test_auto_layout_endpoint_rearranges_components_and_clears_manual_locks(tmp_path) -> None:
+    client = TestClient(create_app(tmp_path / "auto-layout.db"))
+    client.post("/api/circuits/blank", json={})
+    first = client.post(
+        "/api/components",
+        json={"type": "resistor", "params": {"resistance_ohm": 1_000}, "position": {"x": 720, "y": 112}, "expected_revision": 0},
+    ).json()
+    second = client.post(
+        "/api/components",
+        json={"type": "capacitor", "params": {"capacitance_f": 100e-9}, "expected_revision": first["revision"]},
+    ).json()
+
+    response = client.post(
+        "/api/circuit/auto-layout",
+        json={"expected_revision": second["revision"], "preserve_manual": False},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["revision"] == second["revision"] + 1
+    assert all(item["layout_locked"] is False for item in response.json()["components"])
+    assert len({(item["position"]["x"], item["position"]["y"]) for item in response.json()["components"]}) == len(response.json()["components"])
+
+
 def test_experiment_restore_recovers_recorded_layout(tmp_path) -> None:
     client = TestClient(create_app(tmp_path / "experiment-layout.db"))
     client.post("/api/circuits/blank", json={})

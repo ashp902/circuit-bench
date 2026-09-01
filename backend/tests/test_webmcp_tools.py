@@ -23,6 +23,7 @@ EXPECTED_TOOLS = {
     "delete_saved_circuit",
     "reset_lab",
     "get_circuit",
+    "auto_layout_circuit",
     "get_constraints",
     "add_component",
     "create_node",
@@ -70,6 +71,22 @@ def registry(tmp_path) -> tuple[WebMCPToolRegistry, LabService]:
     repository.initialize(*default_lab())
     labs = LabService(repository)
     return WebMCPToolRegistry(labs), labs
+
+
+def test_auto_layout_tool_is_revision_safe_and_preserves_manual_placements(tmp_path) -> None:
+    tools, labs = registry(tmp_path)
+    original = labs.repository.get_circuit()
+    manually_placed = original.components[0]
+    labs.set_component_layout(manually_placed.id, {"x": 736, "y": 112}, manually_placed.rotation, expected_revision=0)
+
+    result = tools.invoke("auto_layout_circuit", {"expected_revision": 1, "preserve_manual": True})
+    arranged = labs.repository.get_circuit()
+
+    assert result["new_revision"] == 2
+    assert next(item for item in arranged.components if item.id == manually_placed.id).position.model_dump() == {"x": 736.0, "y": 112.0}
+    with pytest.raises(CircuitError) as stale:
+        tools.invoke("auto_layout_circuit", {"expected_revision": 1})
+    assert stale.value.code == "STALE_REVISION"
 
 
 class DeterministicSimulator:

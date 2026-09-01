@@ -164,9 +164,16 @@ class LabService:
         service.set_layout(component_id, Position.model_validate(position), rotation, expected_revision)
         return self._save_mutation(service, expected_revision)
 
-    def connect(self, component_id: str, pin: str, node_id: str, expected_revision: int) -> Circuit:
+    def auto_layout(self, expected_revision: int, *, preserve_manual: bool = True) -> Circuit:
+        service = self._circuit_service()
+        service.auto_layout(expected_revision, preserve_manual=preserve_manual)
+        return self._save_mutation(service, expected_revision)
+
+    def connect(self, component_id: str, pin: str, node_id: str, expected_revision: int, *, auto_layout: bool = False) -> Circuit:
         service = self._circuit_service()
         service.connect(component_id, pin, node_id, expected_revision)
+        if auto_layout:
+            service.apply_auto_layout(preserve_manual=True)
         return self._save_mutation(service, expected_revision)
 
     def connect_pins(
@@ -176,9 +183,13 @@ class LabService:
         target_component_id: str,
         target_pin: str,
         expected_revision: int,
+        *,
+        auto_layout: bool = False,
     ) -> Circuit:
         service = self._circuit_service()
         service.connect_pins(source_component_id, source_pin, target_component_id, target_pin, expected_revision)
+        if auto_layout:
+            service.apply_auto_layout(preserve_manual=True)
         return self._save_mutation(service, expected_revision)
 
     def disconnect(self, component_id: str, pin: str, expected_revision: int) -> Circuit:

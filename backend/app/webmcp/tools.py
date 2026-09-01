@@ -119,6 +119,11 @@ class ConnectPinsInput(PinPairConnectionRequest):
     model_config = ConfigDict(extra="forbid")
 
 
+class AutoLayoutInput(RevisionRequest):
+    model_config = ConfigDict(extra="forbid")
+    preserve_manual: bool = True
+
+
 class RestoreCircuitInput(RestoreCircuitRequest):
     model_config = ConfigDict(extra="forbid")
 
@@ -326,6 +331,7 @@ class WebMCPToolRegistry:
         self._register("delete_saved_circuit", "Delete a saved circuit. If it is open, this browser session's workbench returns to the default circuit.", SavedCircuitIdInput, self._delete_saved_circuit, read_only=False)
         self._register("reset_lab", "Replace the active challenge and circuit using the same backend reset behavior as the human application. This discards the current active lab state.", ResetLabInput, self._reset_lab, read_only=False)
         self._register("get_circuit", "Inspect components, electrical nodes, values, connections, and the current revision.", EmptyInput, lambda _args: self._labs.repository.get_circuit(), read_only=True)
+        self._register("auto_layout_circuit", "Arrange the active schematic from its electrical topology. Signal flow runs left-to-right, shunt parts sit below their net, and feedback paths route above it. Manual placements are preserved by default.", AutoLayoutInput, self._auto_layout, read_only=False)
         self._register("get_constraints", "Read the exact machine-evaluated engineering requirements for the active challenge.", EmptyInput, lambda _args: self._labs.repository.get_challenge().constraints, read_only=True)
         self._register("add_component", "Add one allowed primitive component with deterministic automatic placement. Use the current expected_revision to avoid overwriting human edits.", AddComponentRequest, self._add_component, read_only=False)
         self._register("create_node", "Create an optional named electrical net. Direct connect_pins creates a net automatically.", CreateNodeRequest, self._create_node, read_only=False)
@@ -400,7 +406,7 @@ class WebMCPToolRegistry:
 
     def _connect_pins(self, args: BaseModel) -> object:
         payload = self._expect(args, ConnectPinsInput)
-        circuit = self._labs.connect_pins(payload.source_component_id, payload.source_pin, payload.target_component_id, payload.target_pin, payload.expected_revision)
+        circuit = self._labs.connect_pins(payload.source_component_id, payload.source_pin, payload.target_component_id, payload.target_pin, payload.expected_revision, auto_layout=True)
         return {"source": {"component_id": payload.source_component_id, "pin": payload.source_pin}, "target": {"component_id": payload.target_component_id, "pin": payload.target_pin}, "new_revision": circuit.revision}
 
     def _disconnect(self, args: BaseModel) -> object:
@@ -431,8 +437,13 @@ class WebMCPToolRegistry:
 
     def _connect(self, args: BaseModel) -> object:
         payload = self._expect(args, ConnectionRequest)
-        circuit = self._labs.connect(payload.component_id, payload.pin, payload.node_id, payload.expected_revision)
+        circuit = self._labs.connect(payload.component_id, payload.pin, payload.node_id, payload.expected_revision, auto_layout=True)
         return {"component_id": payload.component_id, "pin": payload.pin, "node_id": payload.node_id, "new_revision": circuit.revision}
+
+    def _auto_layout(self, args: BaseModel) -> object:
+        payload = self._expect(args, AutoLayoutInput)
+        circuit = self._labs.auto_layout(payload.expected_revision, preserve_manual=payload.preserve_manual)
+        return {"component_count": len(circuit.components), "preserved_manual_positions": payload.preserve_manual, "new_revision": circuit.revision}
 
     def _set_component_value(self, args: BaseModel) -> object:
         payload = self._expect(args, SetParameterRequestWithId)

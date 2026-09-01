@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 from app.models.circuit import ALLOWED_PARAMETERS, Challenge, Circuit, Component, ComponentType, Node, PIN_NAMES, ParameterValue, Position
 from app.services.errors import CircuitError
+from app.services.layout_service import arrange_circuit
 
 
 class CircuitService:
@@ -26,7 +27,7 @@ class CircuitService:
         index = len(self._circuit.components)
         component_params = {**self._default_params(component_type), **dict(params)}
         try:
-            component = Component(id=self._next_id(prefix), type=component_type, params=component_params, pins={pin: None for pin in PIN_NAMES[component_type]}, position=position or Position(x=180 + (index % 4) * 180, y=220 + (index // 4) * 150))
+            component = Component(id=self._next_id(prefix), type=component_type, params=component_params, pins={pin: None for pin in PIN_NAMES[component_type]}, position=position or Position(x=180 + (index % 4) * 180, y=220 + (index // 4) * 150), layout_locked=position is not None)
         except ValueError as error:
             raise CircuitError("INVALID_PARAMETER", str(error)) from error
         self._circuit.components.append(component)
@@ -75,7 +76,17 @@ class CircuitService:
             raise CircuitError("INVALID_PARAMETER", "Rotation must be 0, 90, 180, or 270 degrees.")
         component.position = position
         component.rotation = rotation
+        component.layout_locked = True
         self._advance_revision()
+
+    def auto_layout(self, expected_revision: int, *, preserve_manual: bool = True) -> None:
+        self._assert_revision(expected_revision)
+        self._circuit = arrange_circuit(self._circuit, preserve_manual=preserve_manual)
+        self._advance_revision()
+
+    def apply_auto_layout(self, *, preserve_manual: bool = True) -> None:
+        """Apply layout inside another mutation without consuming another revision."""
+        self._circuit = arrange_circuit(self._circuit, preserve_manual=preserve_manual)
 
     def connect(self, component_id: str, pin: str, node_id: str, expected_revision: int) -> None:
         self._assert_revision(expected_revision)
@@ -147,7 +158,7 @@ class CircuitService:
         next_params = dict(component.params)
         next_params[parameter] = value
         try:
-            replacement = Component(id=component.id, type=component.type, params=next_params, pins=component.pins, position=component.position, rotation=component.rotation)
+            replacement = Component(id=component.id, type=component.type, params=next_params, pins=component.pins, position=component.position, rotation=component.rotation, layout_locked=component.layout_locked)
         except ValueError as error:
             raise CircuitError("INVALID_PARAMETER", str(error)) from error
         self._circuit.components[self._circuit.components.index(component)] = replacement

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from app.api.schemas import (
     AcRequest,
     AddComponentRequest,
+    AutoLayoutRequest,
     ConnectionRequest,
     CreateBlankCircuitRequest,
     CreateNodeRequest,
@@ -103,6 +104,11 @@ def get_circuit(request: Request) -> Circuit:
 @router.post("/circuit/restore")
 def restore_circuit(payload: RestoreCircuitRequest, request: Request) -> Circuit:
     return service(request).restore_circuit(payload.circuit, payload.expected_revision)
+
+
+@router.post("/circuit/auto-layout")
+def auto_layout_circuit(payload: AutoLayoutRequest, request: Request) -> Circuit:
+    return service(request).auto_layout(payload.expected_revision, preserve_manual=payload.preserve_manual)
 
 
 @router.post("/components")

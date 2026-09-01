@@ -63,6 +63,10 @@ class ComponentLayoutRequest(RevisionRequest):
     rotation: int
 
 
+class AutoLayoutRequest(RevisionRequest):
+    preserve_manual: bool = True
+
+
 class ConnectionRequest(RevisionRequest):
     component_id: str
     pin: str

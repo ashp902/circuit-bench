@@ -80,6 +80,7 @@ class Component(BaseModel):
     pins: dict[str, str | None] = Field(default_factory=dict)
     position: Position | None = None
     rotation: Literal[0, 90, 180, 270] = 0
+    layout_locked: bool = False
 
     @model_validator(mode="after")
     def validate_component_shape(self) -> Component:
