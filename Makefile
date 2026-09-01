@@ -1,15 +1,17 @@
+PYTHON ?= python3
+
 .PHONY: test lint dev backend-test frontend-test
 
 test: backend-test frontend-test
 
 backend-test:
-	cd backend && .venv/bin/python -m pytest
+	cd backend && $(PYTHON) -m pytest
 
 frontend-test:
 	cd frontend && npm run test
 
 lint:
-	cd backend && .venv/bin/python -m compileall -q app tests
+	cd backend && $(PYTHON) -m compileall -q app tests
 	cd frontend && npm run lint
 
 dev:
