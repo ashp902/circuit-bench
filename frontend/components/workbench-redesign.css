@@ -30,7 +30,8 @@
 .workspace-circuit-name-input { background:var(--surface); border:1px solid var(--primary); border-radius:3px; color:var(--text); font-size:14px; font-weight:670; height:27px; padding:0 6px; width:230px; }
 .workspace-toolbar span { color:var(--text-secondary); font-family:var(--font-mono); font-size:11px; font-variant-numeric:tabular-nums; }
 .workspace-toolbar .button { height:32px; }
-.canvas-heading__actions { align-items:center; display:flex; gap:12px; min-width:0; }
+.canvas-heading > .canvas-heading__actions { align-items:center; display:flex; flex-direction:row; gap:10px; min-width:0; }
+.canvas-heading__actions .canvas-note { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .canvas-heading__actions button { background:var(--surface); border:1px solid var(--border); border-radius:4px; color:var(--text-secondary); font-size:12px; font-weight:600; height:28px; padding:0 10px; white-space:nowrap; }
 .canvas-heading__actions button:hover:not(:disabled) { background:var(--surface-subtle); color:var(--text); }
 .canvas-heading__actions button:disabled { color:var(--text-subtle); cursor:not-allowed; }
