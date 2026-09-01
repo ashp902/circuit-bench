@@ -1,0 +1,14 @@
+.git
+.github
+.DS_Store
+.env
+**/.env
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.next
+**/node_modules
+**/*.pyc
+backend/lab.db
+screenshots
+*.png

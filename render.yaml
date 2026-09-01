@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: circuit-bench
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: LAB_ENV
+        value: production
+      - key: LAB_DB_PATH
+        value: /data/lab.db
+      - key: LAB_CORS_ORIGINS
+        value: ""
+      - key: NGSPICE_BIN
+        value: /usr/bin/ngspice
+    disk:
+      name: circuit-bench-data
+      mountPath: /data
+      sizeGB: 1
