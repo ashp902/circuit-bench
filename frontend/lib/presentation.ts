@@ -1,5 +1,17 @@
 import type { ComponentType, ExperimentCriterion } from "@/lib/types";
 
+type StructuredMeasurement = {
+  id?: unknown;
+  label?: unknown;
+  kind?: unknown;
+  type?: unknown;
+};
+
+type StructuredRequirement = Pick<ExperimentCriterion, "operator" | "target" | "tolerance"> & {
+  metric?: unknown;
+  measurement_id?: unknown;
+};
+
 export const componentDisplayNames: Record<ComponentType, string> = {
   resistor: "Resistor",
   capacitor: "Capacitor",
@@ -74,6 +86,35 @@ export function getMeasurementDisplayName(metric: string) {
   return measurementNames[metric] ?? metric.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** Accept both legacy string labels and persisted structured measurement objects. */
+export function getMeasurementDefinitionDisplayName(definition: unknown) {
+  if (typeof definition === "string") return getMeasurementDisplayName(definition);
+  if (definition && typeof definition === "object") {
+    const measurement = definition as StructuredMeasurement;
+    if (typeof measurement.label === "string" && measurement.label.trim()) return measurement.label;
+    if (typeof measurement.id === "string" && measurement.id.trim()) return getMeasurementDisplayName(measurement.id);
+  }
+  return "Measurement";
+}
+
+export function getMeasurementDefinitionId(definition: unknown) {
+  if (typeof definition === "string") return definition;
+  if (definition && typeof definition === "object" && typeof (definition as StructuredMeasurement).id === "string") return (definition as StructuredMeasurement).id as string;
+  return "measurement";
+}
+
+export function isAcMeasurement(definition: unknown) {
+  if (typeof definition === "string") return definition.toLowerCase().includes("gain") || definition.toLowerCase().includes("cutoff");
+  if (!definition || typeof definition !== "object") return false;
+  const measurement = definition as StructuredMeasurement;
+  return measurement.kind === "gain_db" || measurement.kind === "cutoff_frequency" || measurement.type === "ac_gain_db";
+}
+
+export function getRequirementMeasurementId(requirement: StructuredRequirement) {
+  if (typeof requirement.measurement_id === "string" && requirement.measurement_id) return requirement.measurement_id;
+  return typeof requirement.metric === "string" ? requirement.metric : "measurement";
+}
+
 export function getMeasurementUnit(metric: string) {
   if (metric.startsWith("current_a:") || metric.startsWith("current_magnitude_a:") || metric.startsWith("Branch Current:")) return "A";
   if (metric.startsWith("voltage_v:") || metric === "Output Voltage" || metric === "output_voltage") return "V";
@@ -82,8 +123,8 @@ export function getMeasurementUnit(metric: string) {
   return "";
 }
 
-export function formatCriterionDefinition(criterion: ExperimentCriterion) {
-  const unit = getMeasurementUnit(criterion.metric);
+export function formatCriterionDefinition(criterion: StructuredRequirement) {
+  const unit = getMeasurementUnit(getRequirementMeasurementId(criterion));
   if (criterion.operator === "between" && Array.isArray(criterion.target)) return `${formatEngineeringValue(criterion.target[0], unit)} to ${formatEngineeringValue(criterion.target[1], unit)}`;
   if (criterion.operator === "approximately") return `${formatEngineeringValue(Number(criterion.target), unit)} ± ${formatEngineeringValue(criterion.tolerance ?? 0, unit)}`;
   return `${criterion.operator === ">=" ? "minimum" : "maximum"} ${formatEngineeringValue(Number(criterion.target), unit)}`;

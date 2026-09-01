@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ComponentTray } from "@/components/ComponentTray";
 import { componentPins, pathFromPointsWithBridges } from "@/components/CircuitCanvas";
 import { ExperimentTimeline } from "@/components/ExperimentTimeline";
+import { ExperimentAnalysis } from "@/components/ExperimentAnalysis";
 import { GoalPanel } from "@/components/GoalPanel";
 import { PropertyInspector } from "@/components/PropertyInspector";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -96,5 +97,21 @@ describe("shared workbench panels", () => {
     fireEvent.click(screen.getByRole("button", { name: "Transient" }));
     expect(screen.getByRole("button", { name: "Transient" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "Run" })).not.toBeInTheDocument();
+  });
+
+  it("renders Setup for persisted structured experiment measurements", () => {
+    const structuredExperiment = {
+      id: "exp_002", sequence: 2, created_at: "2026-01-01T00:00:00Z", hypothesis: "Verify filter response.", conclusion: "",
+      circuit_revision: 3, circuit_snapshot: circuit, simulation_ids: [], measurements: {}, constraint_results: [], name: "Structured experiment",
+      variables: [{ component_id: "R1", parameter: "resistance_ohm", label: "R1 Resistance", unit: "Ω", sweep: "linear", start: 900, stop: 1100, points: 2 }],
+      measurement_definitions: [{ id: "gain_600_hz", kind: "gain_db", label: "Gain 600 Hz", unit: "dB", input_node: "vin", output_node: "out", frequency_hz: 600 }],
+      requirement_definitions: [{ id: "gain_floor", measurement_id: "gain_600_hz", operator: ">=", target: -0.8 }],
+      generated_runs: [{ index: 1, enabled: true, values: { "R1.resistance_ohm": 900 } }, { index: 2, enabled: true, values: { "R1.resistance_ohm": 1100 } }],
+      run_results: [{ run_index: 1, status: "COMPLETED", parameters: { "R1.resistance_ohm": 900 }, measurements: { gain_600_hz: -0.6 }, requirement_results: [{ metric: "gain_600_hz", status: "PASS", actual: -0.6, target: -0.8 }] }],
+    } as unknown as Experiment;
+    render(<ExperimentAnalysis experiment={structuredExperiment} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Setup" }));
+    expect(screen.getAllByText("Gain 600 Hz").length).toBeGreaterThan(0);
+    expect(screen.getByText(/operating point \+ ac sweep/i)).toBeInTheDocument();
   });
 });
