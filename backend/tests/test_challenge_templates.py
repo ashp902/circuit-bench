@@ -6,8 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
+from app.db.repository import LabRepository
 from app.models.circuit import Circuit, Component, ComponentType, Node
 from app.services.challenge_catalog import debug_amplifier, filter_design, sensor_interface
+from app.services.lab_service import LabService
 from app.services.netlist_service import AcAnalysis, TransientAnalysis
 
 
@@ -62,9 +64,10 @@ def _debug_solution() -> Circuit:
     [(filter_design, _filter_solution, False), (sensor_interface, _sensor_solution, True), (debug_amplifier, _debug_solution, True)],
 )
 def test_every_public_template_has_a_real_ngspice_valid_solution(tmp_path, factory, solution_factory, needs_transient) -> None:
-    application = create_app(tmp_path / "templates.db")
-    service = application.state.lab_service
+    repository = LabRepository(tmp_path / "templates.db")
     challenge, _ = factory()
+    repository.initialize(challenge, solution_factory())
+    service = LabService(repository)
     service.reset(challenge, solution_factory())
     circuit = service.repository.get_circuit()
     ac = service.run_ac(AcAnalysis(10, 100_000, 100, circuit.metadata["input_node"], circuit.metadata["output_node"]))

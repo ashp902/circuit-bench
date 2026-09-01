@@ -9,6 +9,7 @@ Circuit Bench deploys as one Docker service:
 - FastAPI serves the exported frontend, `/api/*`, `/health`, and `/api/webmcp/*` from one origin.
 - One Uvicorn process binds to `0.0.0.0:$PORT`.
 - SQLite is stored at `LAB_DB_PATH`; production defaults to `/data/lab.db`.
+- Anonymous visitors are isolated by a secure HttpOnly cookie whose server-side mapping is stored in the same persistent SQLite database.
 
 The single-origin layout requires no production CORS allowance and preserves the same relative API and WebMCP invocation paths used locally. Run one service replica: a single SQLite database on one attached disk is canonical and is not intended for horizontal multi-writer scaling.
 
@@ -21,6 +22,7 @@ The single-origin layout requires no production CORS allowance and preserves the
 | `NGSPICE_BIN` | `/usr/bin/ngspice` | Recommended | Uses the binary installed in the image. |
 | `LAB_FRONTEND_DIR` | `/app/static` | No | Already set by the Docker image. |
 | `LAB_CORS_ORIGINS` | empty | No | Same-origin production needs no CORS. Set a comma-separated HTTPS allowlist only if a separate frontend is introduced. |
+| `LAB_CLEANUP_INACTIVE_SESSIONS` | `false` | No | Set to `true` to delete anonymous Labs unused for more than 30 days when the service starts. |
 | `PORT` | platform supplied | No | Railway and Render inject this. Do not hardcode it in the platform settings. |
 
 `NEXT_PUBLIC_API_BASE_URL` is intentionally empty at image build time, so browser calls use the deployed page's own HTTPS origin. None of these variables is a secret. Do not commit platform tokens or credentials.

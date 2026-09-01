@@ -1,7 +1,8 @@
 # Virtual Electronics Laboratory — Project Source of Truth
 
 **Status:** Current implementation reference  
-**Last reviewed:** 2026-08-31  
+**Last reviewed:** 2026-09-01
+
 **Audience:** product, design, engineering, QA, and WebMCP integrators
 
 This document defines what the application is, what it currently does, the boundaries it deliberately keeps, and the facts future work must preserve. It describes the running implementation—not a wish list. When a conflict exists, the precedence order is:
@@ -29,9 +30,15 @@ The system also exposes an optional WebMCP tool surface so a compatible external
 
 - **Physics is measured, not guessed.** ngspice performs the circuit analysis; the application stores the resulting measurements and evidence.
 - **Humans remain in control.** The visual workbench is fully usable without WebMCP.
-- **One canonical circuit.** The backend owns circuit state and increments a revision after every accepted mutation.
+- **One canonical circuit per anonymous Lab.** The backend owns each browser session's circuit state and increments a revision after every accepted mutation.
 - **Evidence is preserved.** An executed experiment is read-only so its circuit snapshot, run matrix, conditions, timestamps, and results remain reproducible.
 - **Technical clarity over decoration.** The visual language favors compact panels, structured property rows, engineering units, subtle borders, and dense readable data.
+
+### Anonymous session ownership
+
+Circuit Bench has no login or account system. On first use, the backend creates an isolated Lab and associates it with a cryptographically random, opaque browser cookie. The cookie is HttpOnly, uses SameSite=Lax, is Secure in production, and has a sliding 30-day lifetime. Only a SHA-256 digest of the bearer token is persisted.
+
+Every Workbench circuit, saved circuit, simulation, experiment, report, and WebMCP invocation resolves through that request's Lab. Two browsers may therefore use the same local IDs such as `circuit_001` or `exp_001` without sharing data. Session identity is intentionally absent from public REST payloads and WebMCP tool schemas. Clearing the cookie starts a new blank Lab; there is no account recovery mechanism.
 
 ## 3. Supported laboratory domain
 
@@ -156,18 +163,18 @@ An experiment with any recorded `run_results` is immutable. This prevents edits 
 
 ```text
 Human Workbench UI ─┐
-                    ├─> FastAPI commands ─> validation/revision checks ─> SQLite state
-WebMCP integration ─┘                                                │
-                                                                      ├─> netlist generator
-                                                                      ├─> ngspice
-                                                                      └─> measurements + constraints
+                    ├─> anonymous cookie ─> request-scoped LabService ─> SQLite Lab state
+WebMCP integration ─┘                                      │
+                                                           ├─> validation/revision checks
+                                                           ├─> netlist generator + ngspice
+                                                           └─> measurements + constraints
 ```
 
 ### Ownership rules
 
 - **Backend / SQLite is canonical.** The frontend is a client and refreshes from API responses plus lightweight invalidation polling.
 - Circuit-changing requests include `expected_revision`. A mismatched revision is rejected with `STALE_REVISION`; callers must refresh and retry deliberately.
-- Circuits, experiment definitions, simulation results, and snapshots are persisted in SQLite (`backend/lab.db` by default, configurable with `LAB_DATABASE_URL`).
+- Anonymous session mappings, circuits, experiment definitions, simulation results, and snapshots are persisted in SQLite (`backend/lab.db` by default, configurable with `LAB_DB_PATH`).
 - Component `position {x, y}` and `rotation` are part of the backend `Circuit` model, saved circuits, undo/redo snapshots, and experiment snapshots. Electrical topology depends only on nodes and pins, never visual position.
 - The open UI polls canonical state every 2 seconds in Workbench, every 4 seconds in other idle workspaces, and every 750 ms while an experiment is active; focus and visibility changes also trigger refresh. This makes human and WebMCP changes visible without manual reload while avoiding high-frequency idle polling.
 - ngspice is invoked by backend simulation services; the application does not use a custom electrical solver.
@@ -190,7 +197,7 @@ WebMCP integration ─┘                                                │
 
 The browser can register the backend tool definitions with a compatible `document.modelContext` implementation. The frontend obtains tool definitions from `GET /api/webmcp/tools`, registers them, and forwards invocations to `POST /api/webmcp/invoke`.
 
-Every registered tool is a thin semantic wrapper around the **same `LabService` and canonical state** used by REST. Therefore WebMCP-created circuit edits appear in the human Workbench, and revision-safe mutations protect human changes from stale external writes.
+Every registered tool is a thin semantic wrapper around the **same request-scoped `LabService` and canonical Lab state** used by REST. The browser's HttpOnly cookie selects that Lab automatically; tool inputs never accept a session identifier. Therefore WebMCP-created circuit edits appear in that browser's human Workbench, and revision-safe mutations protect human changes from stale external writes without exposing another visitor's data.
 
 WebMCP availability depends on the host browser’s experimental model-context implementation. The human application does not require it.
 
@@ -204,8 +211,8 @@ WebMCP availability depends on the host browser’s experimental model-context i
 | `create_blank_circuit` | Write | Create a blank circuit with only Ground. Without a supplied name, it uses the human `New Circuit` naming sequence. |
 | `list_saved_circuits` | Read | List named saved circuits available to open. |
 | `rename_circuit` | Write | Rename the active circuit while retaining automatic persistence. |
-| `open_saved_circuit` | Write | Open a saved circuit as the active shared workbench circuit. |
-| `delete_saved_circuit` | Write | Delete a saved circuit; deleting the active one returns the shared workbench to the blank landing state. |
+| `open_saved_circuit` | Write | Open a saved circuit as the browser session's active workbench circuit. |
+| `delete_saved_circuit` | Write | Delete a saved circuit; deleting the active one returns that session's workbench to the blank landing state. |
 | `reset_lab` | Write | Replace the active challenge and circuit using the same reset service as the human UI. |
 | `get_circuit` | Read | Get components, named nodes, pin connections, values, and current revision. |
 | `get_constraints` | Read | Get machine-evaluated requirements for the active challenge. |

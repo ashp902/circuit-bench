@@ -1,6 +1,6 @@
 # Autonomous Virtual Electronics Lab
 
-A shared virtual electronics workbench where a human and an AI agent operate the same circuit. The agent does not get a solver: it edits components, runs real `ngspice` analyses, reads measurements, evaluates constraints, and saves evidence-backed experiments.
+An anonymous-session-isolated virtual electronics workbench where a human and a WebMCP agent can operate the same circuit within one browser session. The agent does not get a solver: it edits components, runs real `ngspice` analyses, reads measurements, evaluates constraints, and saves evidence-backed experiments.
 
 ## Why WebMCP matters
 
@@ -10,7 +10,7 @@ The browser registers a concise, semantic tool surface—inspect the lab, edit c
 
 - Three selectable, simulator-backed challenges: **Sensor Interface** (flagship), **Filter Design**, and **Debug Amplifier**.
 - A React Flow canvas with explicit electrical nodes, component inspector, component tray, run controls, response charts, constraint panel, and activity-oriented experiment timeline.
-- FastAPI + SQLite canonical lab state, real operating-point, AC, and transient simulation through `ngspice`, measurement and constraint services, snapshots, and restore.
+- FastAPI + SQLite canonical per-Lab state, anonymous secure-cookie isolation, real operating-point, AC, and transient simulation through `ngspice`, measurement and constraint services, snapshots, and restore.
 - A browser WebMCP registration layer plus a backend semantic tool registry with revision-safe mutations.
 
 The implementation intentionally has no hidden `solve`, design, optimize, or fix endpoint. Known-good circuits exist only in test fixtures to keep the public challenges honest and regression-tested.
@@ -95,4 +95,4 @@ The last command rehearses each template with only the public WebMCP primitive o
 
 - The op-amp is a simplified high-gain voltage-controlled source; it does not model rail clipping, slew rate, or noise.
 - The diode uses a small built-in SPICE model rather than a vendor-specific part.
-- WebMCP availability depends on the browser’s experimental implementation. The shared human workbench remains fully usable when it is unavailable.
+- WebMCP availability depends on the browser’s experimental implementation. The session's human workbench remains fully usable when it is unavailable.
