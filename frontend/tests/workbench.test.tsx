@@ -118,5 +118,8 @@ describe("shared workbench panels", () => {
     expect(screen.getByRole("columnheader", { name: "Run" })).toHaveClass("numeric-column");
     expect(screen.getByRole("columnheader", { name: "R1 Resistance" })).toHaveClass("numeric-column");
     expect(screen.getByRole("columnheader", { name: "Gain 600 Hz" })).toHaveClass("numeric-column");
+    fireEvent.click(screen.getByText("001"));
+    expect(screen.getByRole("heading", { name: "Run 001" })).toBeInTheDocument();
+    expect(screen.getAllByText("Gain 600 Hz").length).toBeGreaterThan(1);
   });
 });
