@@ -32,7 +32,6 @@ COPY backend/app ./app
 COPY --from=frontend-build /build/frontend/out ./static
 
 EXPOSE 8000
-VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/health', timeout=3)"
