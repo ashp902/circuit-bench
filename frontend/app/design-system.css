@@ -1,0 +1,137 @@
+:root {
+  --app-bg: #F5F7FA;
+  --surface: #FFFFFF;
+  --surface-subtle: #F8FAFC;
+  --text: #172033;
+  --text-secondary: #64748B;
+  --border: #D8DEE8;
+  --primary: #2457A6;
+  --primary-hover: #1D4788;
+  --primary-soft: #EAF1FC;
+  --accent: #2457A6;
+  --success: #15803D;
+  --warning: #B45309;
+  --danger: #B42318;
+  --selection: #E8F0FC;
+  --color-app-bg: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-canvas: #fbfcfe;
+  --color-surface-hover: #f1f5f9;
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: #8793a5;
+  --color-text-inverse: #ffffff;
+  --color-border: var(--border);
+  --color-border-strong: #b8c3d1;
+  --color-divider: #e8edf3;
+  --color-accent: var(--primary);
+  --color-accent-hover: var(--primary-hover);
+  --color-accent-active: #173b76;
+  --color-accent-soft: var(--primary-soft);
+  --color-accent-selection: var(--selection);
+  --color-success: var(--success);
+  --color-success-soft: #edf8f0;
+  --color-warning: var(--warning);
+  --color-warning-soft: #fff7ed;
+  --color-danger: var(--danger);
+  --color-danger-soft: #fff3f2;
+  --color-info: var(--primary);
+  --color-info-soft: var(--primary-soft);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-control: 5px;
+  --radius-panel: 6px;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Compatibility aliases allow existing workspaces to use the shared system. */
+  --surface-muted: var(--color-surface-subtle);
+  --surface-selection: var(--color-accent-soft);
+  --text-muted: var(--color-text-secondary);
+  --text-subtle: var(--color-text-muted);
+  --border-strong: var(--color-border-strong);
+  --accent-strong: var(--color-accent-hover);
+  --blue: var(--color-info);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+}
+
+html, body { background: var(--color-app-bg); color: var(--color-text-primary); }
+button, input, select, textarea { font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid rgb(36 87 166 / 42%); outline-offset: 2px; }
+input, select, textarea { border-color: var(--color-border-strong); }
+input:hover, select:hover, textarea:hover { border-color: var(--color-text-muted); }
+input:disabled, select:disabled, textarea:disabled { background: var(--color-surface-subtle); color: var(--color-text-muted); }
+
+.button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  height: 34px;
+  justify-content: center;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+.button:active:not(:disabled) { transform: translateY(1px); }
+.button--primary, .quick-run-button {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+.button--primary:hover:not(:disabled), .quick-run-button:hover:not(:disabled) { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.button--secondary { background: var(--color-surface); border-color: var(--color-border-strong); color: var(--color-text-primary); }
+.button--secondary:hover:not(:disabled) { background: var(--color-surface-hover); border-color: var(--color-text-muted); }
+.button--tertiary { background: transparent; color: var(--color-text-secondary); }
+.button--tertiary:hover:not(:disabled) { background: var(--color-surface-hover); color: var(--color-text-primary); }
+.button--danger { background: var(--color-surface); border-color: #d9a9a9; color: var(--color-danger); }
+.button--danger:hover:not(:disabled) { background: var(--color-danger-soft); }
+
+.tabs { display: flex; gap: var(--space-1); }
+.tabs button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--color-text-secondary); font-size: 13px; height: 40px; padding: 0 var(--space-3); }
+.tabs button:hover { color: var(--color-text-primary); }
+.tabs button.is-active { border-bottom-color: var(--color-accent); color: var(--color-accent-hover); font-weight: 650; }
+.tabs button:active:not(:disabled), .app-tabs button:active:not(:disabled), .builder-tabs button:active:not(:disabled), .analysis-tabs button:active:not(:disabled) { transform: translateY(1px); }
+.app-tabs { gap: var(--space-2); }
+
+.revision-readout { color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 11px; font-variant-numeric: tabular-nums; }
+.app-header { height: 54px; padding: 0 var(--space-5); }
+.app-header h1 { font-size: 15px; }
+.section-kicker { color: var(--color-text-secondary); }
+.app-mark { background: var(--color-accent); border-radius: 4px; }
+.app-tabs { padding: 0 var(--space-5); }
+
+.status-badge { align-items: center; display: inline-flex; font-size: 11px; font-weight: 600; gap: 6px; white-space: nowrap; }
+.status-badge > span { background: currentColor; border-radius: 50%; height: 6px; width: 6px; }
+.status-badge--neutral { color: var(--color-text-secondary); }
+.status-badge--success { color: var(--color-success); }
+.status-badge--warning { color: var(--color-warning); }
+.status-badge--danger { color: var(--color-danger); }
+.status-badge--info { color: var(--color-info); }
+
+.inline-notice { border-left: 3px solid var(--color-info); color: var(--color-text-secondary); font-size: 12px; line-height: 1.45; padding: var(--space-2) var(--space-3); }
+.inline-notice--warning { background: var(--color-warning-soft); border-color: var(--color-warning); }
+.inline-notice--danger { background: var(--color-danger-soft); border-color: var(--color-danger); color: #7d3030; }
+
+.property-row__value { align-items: center; display: flex; justify-content: flex-end; min-width: 0; }
+.numeric-unit-input { border-radius: var(--radius-control); }
+.numeric-unit-input:focus-within { outline: 2px solid rgb(36 87 166 / 42%); outline-offset: 2px; }
+.numeric-unit-input input:focus-visible, .numeric-unit-input select:focus-visible { outline: 0; }
+
+.empty-state { background: transparent; border-color: var(--color-border); border-radius: var(--radius-panel); margin:16px 20px; max-width:none; min-height:112px; }
+
+@media (max-width: 600px) {
+  .app-header { padding: var(--space-3) var(--space-4); }
+  .app-tabs { padding: 0 var(--space-2); }
+  .revision-readout { display: none; }
+}
