@@ -10,12 +10,12 @@ from app.services.errors import CircuitError
 class LabRepository:
     """Small SQLite repository using JSON snapshots at stable service boundaries."""
 
-    lab_id = "default"
-
-    def __init__(self, database_path: Path) -> None:
+    def __init__(self, database_path: Path, lab_id: str = "default", *, create_schema: bool = True) -> None:
         self._database_path = database_path
+        self.lab_id = lab_id
         self._database_path.parent.mkdir(parents=True, exist_ok=True)
-        self._create_schema()
+        if create_schema:
+            self._create_schema()
 
     def initialize(self, challenge: Challenge, circuit: Circuit) -> None:
         with self._connect() as connection:
@@ -35,7 +35,8 @@ class LabRepository:
             connection.execute("DELETE FROM experiments WHERE lab_id = ?", (self.lab_id,))
             connection.execute("DELETE FROM simulations WHERE lab_id = ?", (self.lab_id,))
             connection.execute(
-                "INSERT OR REPLACE INTO labs (id, challenge_json, active_saved_circuit_id) VALUES (?, ?, NULL)",
+                "INSERT INTO labs (id, challenge_json, active_saved_circuit_id) VALUES (?, ?, NULL) "
+                "ON CONFLICT(id) DO UPDATE SET challenge_json = excluded.challenge_json, active_saved_circuit_id = NULL",
                 (self.lab_id, challenge.model_dump_json()),
             )
             connection.execute(
@@ -132,32 +133,41 @@ class LabRepository:
     def save_saved_circuit(self, saved: SavedCircuit) -> None:
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO saved_circuits (id, name, created_at, updated_at, saved_circuit_json) VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, saved_circuit_json = excluded.saved_circuit_json",
-                (saved.id, saved.name, saved.created_at.isoformat(), saved.updated_at.isoformat(), saved.model_dump_json()),
+                "INSERT INTO saved_circuits (id, lab_id, name, created_at, updated_at, saved_circuit_json) VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(lab_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, saved_circuit_json = excluded.saved_circuit_json",
+                (saved.id, self.lab_id, saved.name, saved.created_at.isoformat(), saved.updated_at.isoformat(), saved.model_dump_json()),
             )
 
     def get_saved_circuit(self, circuit_id: str) -> SavedCircuit:
         with self._connect() as connection:
-            row = connection.execute("SELECT saved_circuit_json FROM saved_circuits WHERE id = ?", (circuit_id,)).fetchone()
+            row = connection.execute(
+                "SELECT saved_circuit_json FROM saved_circuits WHERE id = ? AND lab_id = ?",
+                (circuit_id, self.lab_id),
+            ).fetchone()
         if row is None:
             raise CircuitError("CIRCUIT_NOT_FOUND", f"Saved circuit {circuit_id} does not exist.")
         return SavedCircuit.model_validate_json(row[0])
 
     def list_saved_circuits(self) -> list[SavedCircuit]:
         with self._connect() as connection:
-            rows = connection.execute("SELECT saved_circuit_json FROM saved_circuits ORDER BY updated_at DESC, name COLLATE NOCASE").fetchall()
+            rows = connection.execute(
+                "SELECT saved_circuit_json FROM saved_circuits WHERE lab_id = ? ORDER BY updated_at DESC, name COLLATE NOCASE",
+                (self.lab_id,),
+            ).fetchall()
         return [SavedCircuit.model_validate_json(row[0]) for row in rows]
 
     def delete_saved_circuit(self, circuit_id: str) -> None:
         with self._connect() as connection:
-            cursor = connection.execute("DELETE FROM saved_circuits WHERE id = ?", (circuit_id,))
+            cursor = connection.execute(
+                "DELETE FROM saved_circuits WHERE id = ? AND lab_id = ?",
+                (circuit_id, self.lab_id),
+            )
             if cursor.rowcount != 1:
                 raise CircuitError("CIRCUIT_NOT_FOUND", f"Saved circuit {circuit_id} does not exist.")
 
     def next_saved_circuit_sequence(self) -> int:
         with self._connect() as connection:
-            row = connection.execute("SELECT COUNT(*) FROM saved_circuits").fetchone()
+            row = connection.execute("SELECT COUNT(*) FROM saved_circuits WHERE lab_id = ?", (self.lab_id,)).fetchone()
         return (int(row[0]) if row else 0) + 1
 
     def update_experiment(self, experiment: Experiment) -> None:
@@ -225,21 +235,85 @@ class LabRepository:
                     result_json TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS experiments (
-                    id TEXT PRIMARY KEY,
+                    id TEXT NOT NULL,
                     lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
                     sequence INTEGER NOT NULL,
                     experiment_json TEXT NOT NULL,
+                    PRIMARY KEY(lab_id, id),
                     UNIQUE(lab_id, sequence)
                 );
                 CREATE TABLE IF NOT EXISTS saved_circuits (
-                    id TEXT PRIMARY KEY,
+                    id TEXT NOT NULL,
+                    lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
                     name TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    saved_circuit_json TEXT NOT NULL
+                    saved_circuit_json TEXT NOT NULL,
+                    PRIMARY KEY(lab_id, id)
+                );
+                CREATE TABLE IF NOT EXISTS anonymous_sessions (
+                    token_hash TEXT PRIMARY KEY,
+                    lab_id TEXT NOT NULL UNIQUE REFERENCES labs(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL
                 );
                 """
             )
             columns = {row[1] for row in connection.execute("PRAGMA table_info(labs)")}
             if "active_saved_circuit_id" not in columns:
                 connection.execute("ALTER TABLE labs ADD COLUMN active_saved_circuit_id TEXT")
+            self._migrate_experiments_to_lab_primary_key(connection)
+            self._migrate_saved_circuits_to_lab_ownership(connection)
+
+    @staticmethod
+    def _primary_key_columns(connection: sqlite3.Connection, table: str) -> list[str]:
+        return [
+            str(row[1])
+            for row in sorted(connection.execute(f"PRAGMA table_info({table})").fetchall(), key=lambda item: item[5])
+            if row[5]
+        ]
+
+    def _migrate_experiments_to_lab_primary_key(self, connection: sqlite3.Connection) -> None:
+        if self._primary_key_columns(connection, "experiments") == ["lab_id", "id"]:
+            return
+        connection.executescript(
+            """
+            CREATE TABLE experiments_by_lab (
+                id TEXT NOT NULL,
+                lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+                sequence INTEGER NOT NULL,
+                experiment_json TEXT NOT NULL,
+                PRIMARY KEY(lab_id, id),
+                UNIQUE(lab_id, sequence)
+            );
+            INSERT INTO experiments_by_lab (id, lab_id, sequence, experiment_json)
+                SELECT id, lab_id, sequence, experiment_json FROM experiments;
+            DROP TABLE experiments;
+            ALTER TABLE experiments_by_lab RENAME TO experiments;
+            """
+        )
+
+    def _migrate_saved_circuits_to_lab_ownership(self, connection: sqlite3.Connection) -> None:
+        columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(saved_circuits)")}
+        if "lab_id" in columns and self._primary_key_columns(connection, "saved_circuits") == ["lab_id", "id"]:
+            return
+        lab_expression = "lab_id" if "lab_id" in columns else "'default'"
+        connection.executescript(
+            f"""
+            CREATE TABLE saved_circuits_by_lab (
+                id TEXT NOT NULL,
+                lab_id TEXT NOT NULL REFERENCES labs(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                saved_circuit_json TEXT NOT NULL,
+                PRIMARY KEY(lab_id, id)
+            );
+            INSERT INTO saved_circuits_by_lab (id, lab_id, name, created_at, updated_at, saved_circuit_json)
+                SELECT id, {lab_expression}, name, created_at, updated_at, saved_circuit_json
+                FROM saved_circuits
+                WHERE EXISTS (SELECT 1 FROM labs WHERE labs.id = {lab_expression});
+            DROP TABLE saved_circuits;
+            ALTER TABLE saved_circuits_by_lab RENAME TO saved_circuits;
+            """
+        )

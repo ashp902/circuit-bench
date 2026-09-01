@@ -35,11 +35,11 @@ router = APIRouter(prefix="/api")
 
 
 def service(request: Request) -> LabService:
-    return request.app.state.lab_service
+    return request.state.lab_service
 
 
 def webmcp(request: Request) -> WebMCPToolRegistry:
-    return request.app.state.webmcp_tools
+    return request.state.webmcp_tools
 
 
 @router.get("/lab")
