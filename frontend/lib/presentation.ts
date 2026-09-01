@@ -12,6 +12,18 @@ type StructuredRequirement = Pick<ExperimentCriterion, "operator" | "target" | "
   measurement_id?: unknown;
 };
 
+type ExperimentVariableDefinition = {
+  component_id?: unknown;
+  label?: unknown;
+  parameter?: unknown;
+  points?: unknown;
+  start?: unknown;
+  stop?: unknown;
+  sweep?: unknown;
+  unit?: unknown;
+  values?: unknown;
+};
+
 export const componentDisplayNames: Record<ComponentType, string> = {
   resistor: "Resistor",
   capacitor: "Capacitor",
@@ -91,8 +103,12 @@ export function getMeasurementDefinitionDisplayName(definition: unknown) {
   if (typeof definition === "string") return getMeasurementDisplayName(definition);
   if (definition && typeof definition === "object") {
     const measurement = definition as StructuredMeasurement;
-    if (typeof measurement.label === "string" && measurement.label.trim()) return measurement.label;
-    if (typeof measurement.id === "string" && measurement.id.trim()) return getMeasurementDisplayName(measurement.id);
+    const id = typeof measurement.id === "string" ? measurement.id.trim() : "";
+    const label = typeof measurement.label === "string" ? measurement.label.trim() : "";
+    // Older persisted definitions used the machine identifier as their label.
+    if (label && label !== id) return label;
+    if (id) return getMeasurementDisplayName(id);
+    if (label) return label;
   }
   return "Measurement";
 }
@@ -113,6 +129,37 @@ export function isAcMeasurement(definition: unknown) {
 export function getRequirementMeasurementId(requirement: StructuredRequirement) {
   if (typeof requirement.measurement_id === "string" && requirement.measurement_id) return requirement.measurement_id;
   return typeof requirement.metric === "string" ? requirement.metric : "measurement";
+}
+
+export function getExperimentVariableLabel(variable: unknown) {
+  if (!variable || typeof variable !== "object") return "Parameter";
+  const definition = variable as ExperimentVariableDefinition;
+  const componentId = typeof definition.component_id === "string" ? definition.component_id : "";
+  const parameter = typeof definition.parameter === "string" ? definition.parameter : "";
+  const label = typeof definition.label === "string" ? definition.label.trim() : "";
+  if (label && !/^\w+ tolerance$/i.test(label)) return label;
+  return componentId && parameter ? getParameterDisplayName(componentId, parameter) : label || "Parameter";
+}
+
+export function formatExperimentVariableValues(variable: unknown) {
+  if (!variable || typeof variable !== "object") return "Not available";
+  const definition = variable as ExperimentVariableDefinition;
+  const unit = typeof definition.unit === "string" ? definition.unit : "";
+  const explicitValues = Array.isArray(definition.values) && definition.values.every((value) => typeof value === "number" && Number.isFinite(value))
+    ? definition.values as number[]
+    : [];
+  if (explicitValues.length) {
+    const first = explicitValues[0];
+    const last = explicitValues.at(-1)!;
+    return `${formatEngineeringValue(first, unit)} to ${formatEngineeringValue(last, unit)} (${explicitValues.length} values)`;
+  }
+  const start = typeof definition.start === "number" ? definition.start : Number.NaN;
+  const stop = typeof definition.stop === "number" ? definition.stop : Number.NaN;
+  const points = typeof definition.points === "number" ? definition.points : Number.NaN;
+  if (Number.isFinite(start) && Number.isFinite(stop)) {
+    return `${formatEngineeringValue(start, unit)} to ${formatEngineeringValue(stop, unit)}${Number.isFinite(points) ? ` (${points} values)` : ""}`;
+  }
+  return "Not available";
 }
 
 export function getMeasurementUnit(metric: string) {
