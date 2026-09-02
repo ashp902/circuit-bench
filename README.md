@@ -1,10 +1,19 @@
-# Autonomous Virtual Electronics Lab
+# Circuit Bench
 
-An anonymous-session-isolated virtual electronics workbench where a human and a WebMCP agent can operate the same circuit within one browser session. The agent does not get a solver: it edits components, runs real `ngspice` analyses, reads measurements, evaluates constraints, and saves evidence-backed experiments.
+Circuit Bench is an open-source virtual electronics laboratory where people and WebMCP-capable agents work on the same circuit, in the same anonymous browser session. It is built for transparent engineering work: every edit, simulation, measurement, experiment run, and report is visible in the shared workbench and backed by real `ngspice` results.
 
 ## Why WebMCP matters
 
-The browser registers a concise, semantic tool surface—inspect the lab, edit circuit primitives, run real analyses, measure outcomes, evaluate constraints, and restore evidence. Both WebMCP and the human UI use the same revision-protected backend state, so agent edits appear on the canvas automatically and stale writes are safely rejected after a human change.
+WebMCP is a particularly good fit for circuit work because it lets an agent act through the same meaningful lab operations a scientist uses instead of guessing from pixels or relying on hidden solver shortcuts. The browser registers a concise semantic tool surface to inspect the active lab, create and wire components, arrange a schematic, run real analyses, measure results, evaluate requirements, and preserve experiment evidence.
+
+People and agents can now work together in a clear handoff loop:
+
+- A person sets the engineering goal, draws or reviews a circuit, changes values, and sees every result in the workbench.
+- An agent can construct candidate circuits from primitives, keep the schematic readable with automatic arrangement, run measurements and controlled sweeps, and record traceable evidence.
+- Both operate the same revision-protected circuit state. Agent edits appear on the human canvas immediately; stale changes are rejected rather than overwriting newer human work.
+- Every browser receives an isolated anonymous Lab, so a person and their agent collaborate within one session without exposing another visitor’s circuits, experiments, or reports.
+
+The agent does not get a hidden `solve`, design, optimize, or fix endpoint. It must build, validate, simulate, measure, and iterate through the same laboratory capabilities available to a person.
 
 ## What is included
 
@@ -12,6 +21,7 @@ The browser registers a concise, semantic tool surface—inspect the lab, edit c
 - A React Flow canvas with explicit electrical nodes, component inspector, component tray, run controls, response charts, constraint panel, and activity-oriented experiment timeline.
 - FastAPI + SQLite canonical per-Lab state, anonymous secure-cookie isolation, real operating-point, AC, and transient simulation through `ngspice`, measurement and constraint services, snapshots, and restore.
 - A browser WebMCP registration layer plus a backend semantic tool registry with revision-safe mutations.
+- Topology-aware schematic arrangement that lays signal flow left-to-right, puts shunt parts below their nets, places feedback above the signal path, and respects manual placements during agent edits.
 
 The implementation intentionally has no hidden `solve`, design, optimize, or fix endpoint. Known-good circuits exist only in test fixtures to keep the public challenges honest and regression-tested.
 
@@ -96,3 +106,7 @@ The last command rehearses each template with only the public WebMCP primitive o
 - The op-amp is a simplified high-gain voltage-controlled source; it does not model rail clipping, slew rate, or noise.
 - The diode uses a small built-in SPICE model rather than a vendor-specific part.
 - WebMCP availability depends on the browser’s experimental implementation. The session's human workbench remains fully usable when it is unavailable.
+
+## Open source
+
+Circuit Bench is available under the [MIT License](LICENSE). Contributions, issues, and experiments are welcome.
